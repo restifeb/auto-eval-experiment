@@ -1,0 +1,14 @@
+No.,question,expected_response,generated_response,retrieved_context,Relevance Rate,Issue Category
+1,Kapan proklamasi kemerdekaan Indonesia dibacakan?,Proklamasi kemerdekaan Indonesia dibacakan pada 17 Agustus 1945.,Proklamasi dibacakan pada **17 Agustus 1945**.,"Sejarah Indonesia
+Proklamasi kemerdekaan Indonesia dibacakan oleh Soekarno dan Mohammad Hatta pada 17 Agustus 1945 di Jakarta. [image_3f9a1c2b]
+- source: sejarah-indonesia.docx
+- file_id: 1945
+Sejarah Indonesia
+Teks proklamasi diketik oleh Sayuti Melik.
+- source: sejarah-indonesia.docx
+- file_id: 1945",Pass,No Issue
+2,Siapa yang mengetik teks proklamasi?,Teks proklamasi diketik oleh Sayuti Melik.,Teks proklamasi diketik oleh Soekarno.,"Sejarah Indonesia
+Teks proklamasi diketik oleh Sayuti Melik.
+- source: sejarah-indonesia.docx
+- file_id: 1945",Failed,Prompt Issue
+,,,,,0.5,

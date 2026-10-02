@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-eval-experiment"
+version = "0.1.0"
+description = "Run a gllm-evals evaluator on a labeled CSV and compare Auto RR with the manual rating."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "gllm-core==0.4.49",
+    "gllm-evals[deepeval]==0.1.29",
+    "gllm-inference==0.6.161",
+    "openpyxl>=3.1,<4.0",
+    "pandas>=2.2,<3.0",
+    "python-dotenv>=1.0,<2.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+include = ["auto_eval*"]
+
+[tool.uv]
+package = true
+constraint-dependencies = ["deepeval==3.9.6"]
+
+[tool.uv.sources]
+gllm-core = { index = "gen-ai-internal" }
+gllm-evals = { index = "gen-ai-internal" }
+gllm-inference = { index = "gen-ai-internal" }
+
+[[tool.uv.index]]
+name = "gen-ai-internal"
+url = "https://glsdk.gdplabs.id/gen-ai-internal/simple/"
+explicit = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "D", "E", "F", "I", "PL", "W"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "PLR2004"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
