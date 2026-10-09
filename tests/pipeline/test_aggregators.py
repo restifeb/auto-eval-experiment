@@ -10,7 +10,7 @@ References:
 import pytest
 from gllm_evals.types import MetricResult
 
-from auto_eval.aggregators import CompletenessFirstAggregator
+from auto_eval.pipeline.aggregators import CompletenessFirstAggregator
 
 
 def make_result(success: bool) -> MetricResult:

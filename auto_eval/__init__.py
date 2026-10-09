@@ -1,4 +1,4 @@
-"""Auto eval base code: run a gllm-evals evaluator on a labeled CSV and compare Auto RR with the manual rating."""
+"""Auto eval base code: score pipeline or agent outputs with gllm-evals and compare Auto RR with the manual rating."""
 
 import os
 

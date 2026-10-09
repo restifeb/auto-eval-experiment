@@ -1,9 +1,10 @@
-"""Calibrate auto eval against the DD labels and validate the result on a second batch.
+"""Calibrate the pipeline auto eval against the DD labels and validate the result on a second batch.
 
 Steps 01 to 09 run on the 30-row calibration batch: the GitBook default, a rerun, three diagnoses of the groundedness
 failures, two calibrations, and answer relevancy. Steps 11 to 14 repeat the setups of steps 01, 06, 07, and 08
 unchanged on the 40-row validation batch. Steps 10 and 15 compare the steps without calling the judge, and the
-workbook collects every CSV in one file. The datasets are read from `data/` and the outputs go to `results/`.
+workbook collects every CSV in one file. The datasets are read from `data/pipeline/`, and every step writes to its
+own folder in `results/pipeline_calibration/`.
 
 Authors:
     Muhammad Hilal Darul Fauzan (hilalfauzan9@gmail.com)
@@ -24,18 +25,19 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
-from auto_eval.dataset import load_test_cases
-from auto_eval.judge import DEFAULT_JUDGE
-from auto_eval.presets import PRESETS, Preset, build_default
-from auto_eval.report import confusion, write_csv
-from auto_eval.runner import run_evaluation
+from auto_eval.pipeline import PIPELINE
+from auto_eval.pipeline.presets import PRESETS, build_default
+from auto_eval.shared.judge import DEFAULT_JUDGE
+from auto_eval.shared.project import Preset
+from auto_eval.shared.report import confusion, write_csv
+from auto_eval.shared.runner import ROWS_FILE, SUMMARY_FILE, run_evaluation
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-RESULTS_DIR = ROOT / "results"
+DATA_DIR = ROOT / "data" / "pipeline"
+RESULTS_DIR = ROOT / "results" / "pipeline_calibration"
 DATASETS = {
     "calibration": DATA_DIR / "test_auto_eval_intern.csv",
-    "validation": DATA_DIR / "Auto RR Results - datatest-tambahan.csv",
+    "validation": DATA_DIR / "auto_rr_results_datatest_tambahan.csv",
 }
 FLASH_JUDGE = "openrouter/google/gemini-3-flash-preview"
 STRICT_THRESHOLD = 1.0
@@ -50,8 +52,8 @@ STUDY_PRESETS = {
     ),
 }
 WORKBOOK_NAME = "auto_rr_all_steps.xlsx"
-CALIBRATION_ANALYSIS_FILES = ("10_overview", "10_verdicts_by_step", "10_whatif")
-VALIDATION_ANALYSIS_FILES = ("15_overview", "15_verdicts_by_step", "15_conditions", "15_whatif")
+CALIBRATION_ANALYSIS_FILES = ("overview", "verdicts_by_step", "whatif")
+VALIDATION_ANALYSIS_FILES = ("overview", "verdicts_by_step", "conditions", "whatif")
 _SHORT_TAB_NAMES = {
     "05_diagnose_judge_gemini3flash_clean_context": "05_diagnose_gemini3flash_clean",
     "07_calibrate_completeness_first_dd_guidance": "07_calibrate_dd_guidance",
@@ -137,8 +139,34 @@ VALIDATION_STEPS = (
 STEPS = CALIBRATION_STEPS + VALIDATION_STEPS
 
 
+def analysis_path(label: str, name: str) -> Path:
+    """Locate one file of an analysis step.
+
+    Args:
+        label (str): The analysis step number, `10` or `15`.
+        name (str): The file name without `.csv`, such as `overview`.
+
+    Returns:
+        Path: The file in the step's `<label>_analysis` folder.
+    """
+    return RESULTS_DIR / f"{label}_analysis" / f"{name}.csv"
+
+
+def write_analysis(label: str, name: str, rows: list[dict[str, object]]) -> None:
+    """Write one file of an analysis step, creating its folder.
+
+    Args:
+        label (str): The analysis step number, `10` or `15`.
+        name (str): The file name without `.csv`.
+        rows (list[dict[str, object]]): The rows to write.
+    """
+    path = analysis_path(label, name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_csv(path, rows)
+
+
 async def run_step(step: Step) -> dict[str, object]:
-    """Run one step and write `results/<step>_rows.csv` and `results/<step>_summary.json`.
+    """Run one step and write `rows.csv` and `summary.json` to its folder.
 
     Args:
         step (Step): The step configuration.
@@ -147,9 +175,9 @@ async def run_step(step: Step) -> dict[str, object]:
         dict[str, object]: The step summary.
     """
     preset = STUDY_PRESETS[step.preset]
-    cases = load_test_cases(DATASETS[step.dataset], clean=preset.clean_context)
+    samples = PIPELINE.load(DATASETS[step.dataset], preset, None)
     metadata = {"step": asdict(step)}
-    return await run_evaluation(cases, preset, step.judge_model, RESULTS_DIR / step.name, metadata=metadata)
+    return await run_evaluation(PIPELINE, preset, samples, step.judge_model, RESULTS_DIR / step.name, metadata=metadata)
 
 
 def load_rows(step_name: str) -> dict[str, dict[str, str]]:
@@ -159,9 +187,9 @@ def load_rows(step_name: str) -> dict[str, dict[str, str]]:
         step_name (str): The step label.
 
     Returns:
-        dict[str, dict[str, str]]: The rows of `results/<step>_rows.csv`.
+        dict[str, dict[str, str]]: The rows of the step's `rows.csv`.
     """
-    with (RESULTS_DIR / f"{step_name}_rows.csv").open(encoding="utf-8", newline="") as file:
+    with (RESULTS_DIR / step_name / ROWS_FILE).open(encoding="utf-8", newline="") as file:
         return {row["no"]: row for row in csv.DictReader(file)}
 
 
@@ -300,7 +328,7 @@ def overview_rows(steps: tuple[Step, ...]) -> list[dict[str, object]]:
         list[dict[str, object]]: The step setup, confusion counts, TPR, TNR, agreement, and cost per step.
     """
     keys = ("TP", "FN", "TN", "FP", "TPR", "TNR", "agreement", "cost_usd")
-    summaries = [json.loads((RESULTS_DIR / f"{s.name}_summary.json").read_text(encoding="utf-8")) for s in steps]
+    summaries = [json.loads((RESULTS_DIR / s.name / SUMMARY_FILE).read_text(encoding="utf-8")) for s in steps]
     return [{**summary["step"], **{key: summary[key] for key in keys}} for summary in summaries]
 
 
@@ -392,30 +420,30 @@ def condition_rows() -> list[dict[str, object]]:
 
 def write_calibration_analysis() -> None:
     """Write the step 10 files for the calibration batch."""
-    write_csv(RESULTS_DIR / "10_overview.csv", overview_rows(CALIBRATION_STEPS))
-    write_csv(RESULTS_DIR / "10_verdicts_by_step.csv", verdict_rows(CALIBRATION_STEPS))
-    write_csv(RESULTS_DIR / "10_whatif.csv", rule_rows(whatif_rules(), load_rows("01_baseline_geval")))
+    write_analysis("10", "overview", overview_rows(CALIBRATION_STEPS))
+    write_analysis("10", "verdicts_by_step", verdict_rows(CALIBRATION_STEPS))
+    write_analysis("10", "whatif", rule_rows(whatif_rules(), load_rows("01_baseline_geval")))
 
 
 def write_validation_analysis() -> None:
     """Write the step 15 files for the validation batch."""
-    write_csv(RESULTS_DIR / "15_overview.csv", overview_rows(VALIDATION_STEPS))
-    write_csv(RESULTS_DIR / "15_verdicts_by_step.csv", verdict_rows(VALIDATION_STEPS))
-    write_csv(RESULTS_DIR / "15_conditions.csv", condition_rows())
+    write_analysis("15", "overview", overview_rows(VALIDATION_STEPS))
+    write_analysis("15", "verdicts_by_step", verdict_rows(VALIDATION_STEPS))
+    write_analysis("15", "conditions", condition_rows())
     rules = relevance_rules("13_validate_completeness_first_dd_guidance", "14_validate_answer_relevancy")
-    write_csv(RESULTS_DIR / "15_whatif.csv", rule_rows(rules, load_rows("11_validate_baseline_geval")))
+    write_analysis("15", "whatif", rule_rows(rules, load_rows("11_validate_baseline_geval")))
 
 
 def write_workbook() -> None:
-    """Combine the step CSVs into one workbook in `results/`, one tab per file in step order.
+    """Combine the step CSVs into one workbook in `results/pipeline_calibration/`, one tab per file in step order.
 
     Files that do not exist yet are skipped. Excel caps tab names at 31 characters, so longer step names use
     `_SHORT_TAB_NAMES`.
     """
-    names = [s.name for s in CALIBRATION_STEPS] + list(CALIBRATION_ANALYSIS_FILES)
-    names += [s.name for s in VALIDATION_STEPS] + list(VALIDATION_ANALYSIS_FILES)
-    sources = [(name, RESULTS_DIR / f"{name}_rows.csv") for name in names]
-    sources = [(name, path if path.exists() else RESULTS_DIR / f"{name}.csv") for name, path in sources]
+    sources = [(s.name, RESULTS_DIR / s.name / ROWS_FILE) for s in CALIBRATION_STEPS]
+    sources += [(f"10_{name}", analysis_path("10", name)) for name in CALIBRATION_ANALYSIS_FILES]
+    sources += [(s.name, RESULTS_DIR / s.name / ROWS_FILE) for s in VALIDATION_STEPS]
+    sources += [(f"15_{name}", analysis_path("15", name)) for name in VALIDATION_ANALYSIS_FILES]
     with pd.ExcelWriter(RESULTS_DIR / WORKBOOK_NAME, engine="openpyxl") as writer:
         for name, path in sources:
             if not path.exists():
@@ -438,7 +466,7 @@ async def main(selected: list[str], analysis_only: bool) -> None:
         analysis_only (bool): Whether to skip the judge calls and only rewrite the analysis files and the workbook.
     """
     load_dotenv()
-    RESULTS_DIR.mkdir(exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     if not analysis_only:
         for step in STEPS:
             if selected and not any(step.name.startswith(prefix) for prefix in selected):
@@ -455,7 +483,7 @@ async def main(selected: list[str], analysis_only: bool) -> None:
         ),
     )
     for label, required, write, files in analyses:
-        missing = [name for name in required if not (RESULTS_DIR / f"{name}_rows.csv").exists()]
+        missing = [name for name in required if not (RESULTS_DIR / name / ROWS_FILE).exists()]
         if missing:
             print(f"Skipped step {label}, missing results for: {', '.join(missing)}")
             continue
@@ -466,7 +494,7 @@ async def main(selected: list[str], analysis_only: bool) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the calibration study steps in order.")
+    parser = argparse.ArgumentParser(description="Run the pipeline calibration study steps in order.")
     parser.add_argument("--steps", nargs="*", default=[], help="Step prefixes to run, such as 01 06. Default: all.")
     parser.add_argument("--analysis-only", action="store_true", help="Only rewrite the analysis files and workbook.")
     args = parser.parse_args()
