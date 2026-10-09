@@ -1,4 +1,4 @@
-"""Tests for the evaluator presets.
+"""Tests for the pipeline evaluator presets.
 
 Authors:
     Muhammad Hilal Darul Fauzan (hilalfauzan9@gmail.com)
@@ -9,8 +9,8 @@ References:
 
 import pytest
 
-from auto_eval.aggregators import CompletenessFirstAggregator
-from auto_eval.presets import DD_COMPLETENESS_GUIDANCE, PRESETS
+from auto_eval.pipeline.aggregators import CompletenessFirstAggregator
+from auto_eval.pipeline.presets import DD_COMPLETENESS_GUIDANCE, PRESETS
 
 
 @pytest.mark.parametrize("name", sorted(PRESETS))

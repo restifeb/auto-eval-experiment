@@ -6,6 +6,10 @@ build/
 .pytest_cache/
 .ruff_cache/
 .deepeval/
+.impeccable/
 .DS_Store
 
 results/
+
+# Agent exports carry user emails and contract data, and this repository is public.
+data/agent/*.csv

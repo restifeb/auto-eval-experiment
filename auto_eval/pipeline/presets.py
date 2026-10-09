@@ -1,4 +1,4 @@
-"""Evaluator presets: the GitBook default and the setups calibrated against the DD labels.
+"""Evaluator presets for pipelines: the GitBook default and the setups calibrated against the DD labels.
 
 A preset pairs a name with a function that builds a gllm-evals evaluator from the judge. A custom setup is one more
 entry in `PRESETS`.
@@ -13,9 +13,6 @@ References:
     [4] https://gdplabs.gitbook.io/sdk/gen-ai-sdk/tutorials/evaluation/evaluator/composite-evaluator
 """
 
-from collections.abc import Callable
-from dataclasses import dataclass
-
 from gllm_evals.evaluator.composite_evaluator import CompositeEvaluator
 from gllm_evals.evaluator.evaluator import BaseEvaluator
 from gllm_evals.evaluator.geval_generation_evaluator import GEvalGenerationEvaluator
@@ -23,7 +20,8 @@ from gllm_evals.metrics.generation import GEvalCompletenessMetric, GEvalGrounded
 from gllm_evals.metrics.generation.deepeval_answer_relevancy import DeepEvalAnswerRelevancyMetric
 from gllm_inference.lm_invoker.lm_invoker import BaseLMInvoker
 
-from auto_eval.aggregators import CompletenessFirstAggregator
+from auto_eval.pipeline.aggregators import CompletenessFirstAggregator
+from auto_eval.shared.project import Preset
 
 DD_COMPLETENESS_GUIDANCE = (
     "Scoring standard: a human reviewer passes the Generated Response when it gives the same answer as the Expected "
@@ -31,26 +29,6 @@ DD_COMPLETENESS_GUIDANCE = (
     "consequences, background, and elaborations that the Expected Response adds beyond that direct answer are not key "
     "facts. When the Question asks for a list or for every item of a group, each requested item is a key fact."
 )
-
-
-@dataclass(frozen=True)
-class Preset:
-    """A named evaluator setup.
-
-    Attributes:
-        name (str): The name used on the command line.
-        description (str): What the setup does.
-        build_evaluator (Callable[[BaseLMInvoker], BaseEvaluator]): Builds the evaluator from the judge.
-        clean_context (bool): Whether the judge sees cleaned, chunked contexts. Defaults to False.
-        gate_metric (str | None): The metric whose score alone decides Auto RR, for the threshold sweep in the
-            summary. Defaults to None.
-    """
-
-    name: str
-    description: str
-    build_evaluator: Callable[[BaseLMInvoker], BaseEvaluator]
-    clean_context: bool = False
-    gate_metric: str | None = None
 
 
 def build_default(judge: BaseLMInvoker) -> BaseEvaluator:

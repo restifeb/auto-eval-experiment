@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "auto-eval-experiment"
-version = "0.1.0"
-description = "Run a gllm-evals evaluator on a labeled CSV and compare Auto RR with the manual rating."
+version = "0.2.0"
+description = "Run gllm-evals auto eval on pipeline or agent outputs and compare Auto RR with the manual rating."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -16,6 +16,9 @@ dependencies = [
     "pandas>=2.2,<3.0",
     "python-dotenv>=1.0,<2.0",
 ]
+
+[project.scripts]
+auto-eval = "auto_eval.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8.0", "ruff>=0.6"]
@@ -40,6 +43,7 @@ explicit = true
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-exclude = ["data", "results"]
 
 [tool.ruff.lint]
 select = ["B", "D", "E", "F", "I", "PL", "W"]
@@ -48,7 +52,8 @@ select = ["B", "D", "E", "F", "I", "PL", "W"]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "PLR2004"]
+"tests/**" = ["D", "PLR2004"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]

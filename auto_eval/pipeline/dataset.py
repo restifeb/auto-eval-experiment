@@ -1,4 +1,4 @@
-"""Load a labeled CSV into gllm-evals test cases.
+"""Load a pipeline CSV in the DD team's export format into gllm-evals test cases.
 
 Authors:
     Muhammad Hilal Darul Fauzan (hilalfauzan9@gmail.com)
@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gllm_evals.types import LLMTestCase
+
+from auto_eval.shared.project import Preset, Sample
 
 _SOURCE_FOOTER = re.compile(r"\n\s*- source:[^\n]*\n\s*- file_id:[^\n]*")
 _IMAGE_PLACEHOLDER = re.compile(r"\[image_[0-9a-f]+\]")
@@ -57,31 +59,34 @@ def clean_context(context: str) -> list[str]:
     return [" ".join(_IMAGE_PLACEHOLDER.sub(" ", chunk).split()) for chunk in chunks if chunk.strip()]
 
 
-def load_test_cases(
-    path: Path, columns: Columns | None = None, clean: bool = False, limit: int | None = None
-) -> list[LLMTestCase]:
-    """Map each CSV row to a test case the way the platform benchmark maps its rows.
+def read_rows(path: Path, columns: Columns) -> list[dict[str, str]]:
+    """Read the numbered rows of a dataset CSV.
+
+    Args:
+        path (Path): The CSV file.
+        columns (Columns): The column names.
+
+    Returns:
+        list[dict[str, str]]: The rows whose row number is not empty, in file order.
+    """
+    with path.open(encoding="utf-8-sig", newline="") as file:
+        return [row for row in csv.DictReader(file) if (row.get(columns.row_id) or "").strip()]
+
+
+def to_case(row: dict[str, str], columns: Columns, clean: bool) -> LLMTestCase:
+    """Map one CSV row to a test case the way the platform benchmark maps its rows.
 
     The manual rating is optional. When it is empty, the case has no `label` and the run reports Auto RR without
     comparing it.
 
     Args:
-        path (Path): The CSV file.
-        columns (Columns | None, optional): The column names. Defaults to None, which uses `Columns()`.
-        clean (bool, optional): Whether to pass the context through `clean_context`. Defaults to False.
-        limit (int | None, optional): Keep only the first rows, for a quick check. Defaults to None.
+        row (dict[str, str]): The CSV row.
+        columns (Columns): The column names.
+        clean (bool): Whether to pass the context through `clean_context`.
 
     Returns:
-        list[LLMTestCase]: One case per row, with the manual rating as `label` when it is present.
+        LLMTestCase: The test case, with the manual rating as `label` when it is present.
     """
-    columns = columns or Columns()
-    with path.open(encoding="utf-8-sig", newline="") as file:
-        rows = [row for row in csv.DictReader(file) if (row.get(columns.row_id) or "").strip()]
-    return [_to_case(row, columns, clean) for row in rows[:limit]]
-
-
-def _to_case(row: dict[str, str], columns: Columns, clean: bool) -> LLMTestCase:
-    """Build one test case from a CSV row."""
     row_id = row[columns.row_id].strip()
     context = row.get(columns.context) or ""
     manual_rr = (row.get(columns.manual_rr) or "").strip()
@@ -96,3 +101,18 @@ def _to_case(row: dict[str, str], columns: Columns, clean: bool) -> LLMTestCase:
         issue_category=row.get(columns.issue_category) or "",
         **label,
     )
+
+
+def load_samples(path: Path, preset: Preset, limit: int | None = None) -> list[Sample]:
+    """Load a DD export into samples, cleaning the context when the preset asks for it.
+
+    Args:
+        path (Path): The CSV file.
+        preset (Preset): The preset the run uses, which sets `clean_context`.
+        limit (int | None, optional): Keep only the first rows, for a quick check. Defaults to None.
+
+    Returns:
+        list[Sample]: One sample per numbered row.
+    """
+    columns = Columns()
+    return [Sample(row, to_case(row, columns, preset.clean_context)) for row in read_rows(path, columns)[:limit]]

@@ -1,0 +1,66 @@
+Index,Question,Expected Answer,Requires Visualization,Answer,Response_Time,Manual_Eval,Issue_Category,Notes,conversation_id,source_tool_1,source_tool_2,source_tool_3,source_tool_4,retrieved_context_or_queried_data_1,retrieved_context_or_queried_data_2,retrieved_context_or_queried_data_3,retrieved_context_or_queried_data_4,artifacts,geval_completeness,geval_completeness_explanation,geval_groundedness,geval_groundedness_explanation,geval_redundancy,geval_redundancy_explanation,geval_language_consistency,geval_language_consistency_explanation,geval_refusal_alignment,geval_refusal_alignment_explanation,auto_rr,possible_issues,evaluation_error,agent_error
+1,Berapa banyak kontrak milik Langit Senja di tahun 2025?,Total kontrak untuk Langit Senja di tahun 2025 ada 2 kontrak.,False,Ada **2 kontrak Langit Senja** yang dimulai pada tahun 2025.,39.0,Pass,,,3f2a9c41-0b7e-4d55-9a61-2c8e5b7d1f04,"[Type: TOOL]
+[Tool: get_runtime_context]
+[Agent: 5d2c8e17-93ab-4f61-b0d4-7e1a6c3f9b28]
+[Step: call_Q7wRt2LmXp9sKd4Vb8NcEf1J]
+[Parent Step: tool_start_002]
+
+**Args:**
+{}
+
+**Output:**
+{""chatbot_id"": ""contract-qna-agent"", ""is_authenticated"": true}
+
+**Status:** finished
+**Duration:** 27ms","[Type: TOOL]
+[Tool: endpoint_config_tool]
+[Agent: 5d2c8e17-93ab-4f61-b0d4-7e1a6c3f9b28]
+[Step: call_Hn3Ze6Yu0Pa5Wq8Rs2Tk7Lm4]
+[Parent Step: tool_start_002]
+
+**Args:**
+{""endpoint_name"": ""contract_by_email"", ""filters"": [{""field"": ""entity"", ""op"": ""eq"", ""value"": ""Langit Senja""}, {""field"": ""startDate"", ""op"": ""year_eq"", ""value"": 2025}], ""aggregate"": {""kind"": ""count""}}
+
+**Output:**
+{""result"": {""kind"": ""count"", ""result"": 2, ""contract_count"": 2, ""contracts"": [{""title"": ""Langit Senja x Arunika Media Kreatif Branded Content Collaboration""}, {""title"": ""Langit Senja x Sinar Cakrawala Sponsorship""}]}}
+
+**Status:** finished
+**Duration:** 27ms",,,"**Output:**
+```
+{
+  ""chatbot_id"": ""contract-qna-agent"",
+  ""is_authenticated"": true
+}
+```","**Output:**
+```
+{
+  ""result"": {
+    ""kind"": ""count"",
+    ""result"": 2,
+    ""contract_count"": 2,
+    ""contracts"": [
+      {
+        ""title"": ""Langit Senja x Arunika Media Kreatif Branded Content Collaboration""
+      },
+      {
+        ""title"": ""Langit Senja x Sinar Cakrawala Sponsorship""
+      }
+    ]
+  }
+}
+```",,,,,,,,,,,,,,,,,
+2,Ada berapa task untuk project Rimba Petualang x Nusantara Sport Branded Content yang belum terselesaikan?,Ada 3 task yang belum terselesaikan.,False,,80.75,Fail,,,9b1d4e72-5c3a-4f08-8e26-7a0c1d9e3b55,"[Type: TOOL]
+[Tool: endpoint_config_tool]
+[Agent: 5d2c8e17-93ab-4f61-b0d4-7e1a6c3f9b28]
+[Step: call_Fb9Gx1Cv6Nm3Jk8Dl2Sh5Rq0]
+[Parent Step: tool_start_002]
+
+**Args:**
+{""endpoint_name"": ""sow"", ""contract_numbers"": [""009/RP-NSP/BC/II/2026""]}
+
+**Output:**
+Request timed out after 30 seconds.
+
+**Status:** failed
+**Duration:** 27ms",,,,,,,,,,,,,,,,,,,,,,
+,Total,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
